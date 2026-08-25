@@ -158,6 +158,34 @@
   }
   .ghost:active{background:var(--surface)}
 
+
+  /* ---------- practice ---------- */
+  .her{
+    background:var(--surface-2);border:1px solid var(--line);border-radius:14px 14px 14px 4px;
+    padding:16px 17px;font-size:17px;line-height:1.4;letter-spacing:-.01em;margin:14px 0;
+  }
+  .beat{
+    font-family:var(--mono);font-size:11px;letter-spacing:.13em;color:var(--muted);
+    text-align:center;padding:24px 0;text-transform:uppercase;
+  }
+  .opt{
+    display:block;width:100%;text-align:left;background:var(--surface);color:var(--text);
+    border:1px solid var(--line);border-radius:12px;padding:14px 15px;margin-bottom:8px;
+    font:inherit;font-size:14.5px;line-height:1.4;cursor:pointer;transition:border-color .15s;
+  }
+  .opt:active{background:var(--surface-2)}
+  .opt:disabled{cursor:default}
+  .opt[data-q="good"]{border-color:var(--signal);background:var(--signal-dim);opacity:1}
+  .opt[data-q="mid"]{border-color:var(--muted);opacity:1}
+  .opt[data-q="bad"]{border-color:var(--miss);background:var(--miss-dim);opacity:1}
+  .opt:focus-visible{outline:2px solid var(--signal);outline-offset:2px}
+  .fb{border-left:2px solid var(--signal);padding-left:13px;margin:18px 0}
+  .fb p{margin:4px 0 0;font-size:14.5px}
+  .prim{
+    width:100%;background:var(--signal);border:0;color:#0E1518;border-radius:12px;
+    padding:14px;font:inherit;font-size:15px;font-weight:600;cursor:pointer;margin-top:4px;
+  }
+
   /* ---------- nav ---------- */
   nav{
     position:fixed;left:0;right:0;bottom:0;background:rgba(16,23,29,.94);
@@ -284,6 +312,7 @@
       <div class="card"><span class="n" id="stDays">0</span><span class="k">Days logged</span></div>
       <div class="card"><span class="n" id="stUsed">0</span><span class="k">Moves used</span></div>
       <div class="card"><span class="n" id="stCalm">0</span><span class="k">Calm days</span></div>
+      <div class="card"><span class="n" id="stPrac">0</span><span class="k">Rehearsals</span></div>
     </div>
 
     <section>
@@ -315,10 +344,51 @@
 
 </div>
 
+  <!-- ============ PRACTICE ============ -->
+  <div class="screen" id="s-practice">
+
+    <div id="pracHome">
+      <header class="top">
+        <div class="eyebrow">Two minutes, a few times a week</div>
+        <h1>Practice</h1>
+      </header>
+      <p class="sub" style="margin-top:0">Nobody real is in here. You're training the beat before you answer, not learning to predict a person.</p>
+
+      <div class="stat" style="margin-top:18px">
+        <div class="card"><span class="n" id="pracCount">0</span><span class="k">Run through</span></div>
+        <div class="card"><span class="n" id="pracRate">&mdash;</span><span class="k">Best answer</span></div>
+      </div>
+
+      <button class="prim" id="pracRandom">Give me one at random</button>
+
+      <section>
+        <div class="sec-head"><div class="eyebrow">Or pick</div></div>
+        <div id="pracList"></div>
+      </section>
+    </div>
+
+    <div id="pracRun" style="display:none">
+      <header class="top">
+        <div class="eyebrow" id="pracTitle"></div>
+      </header>
+      <p class="sub" id="pracSetup" style="margin-top:0"></p>
+      <div class="her" id="pracHer"></div>
+      <div class="beat" id="pracBeat"></div>
+      <div id="pracOpts"></div>
+      <div class="fb" id="pracFb" style="display:none"></div>
+      <button class="prim" id="pracNext" style="display:none"></button>
+      <button class="ghost" id="pracQuit">Leave this one</button>
+    </div>
+
+  </div>
+
+</div>
+
 <nav>
   <div class="inner">
     <button data-s="now" aria-current="true">Now</button>
     <button data-s="log">Log</button>
+    <button data-s="practice">Practice</button>
     <button data-s="review">Review</button>
   </div>
 </nav>
@@ -534,6 +604,7 @@
     $("#stDays").textContent = logged;
     $("#stUsed").textContent = used;
     $("#stCalm").textContent = calm;
+    $("#stPrac").textContent = (db.practice && db.practice.reps) || 0;
 
     var ph = currentPhase();
     var shown = MOVES.filter(function(m){ return db.showAll || m.phase <= ph; });
@@ -579,9 +650,418 @@
   $("#wipeBtn").addEventListener("click", function(){
     if(!confirm("Erase every log and note on this device? This can't be undone.")) return;
     try{ localStorage.removeItem(KEY); }catch(e){}
-    db = { start:today(), days:{}, agreed:"", checkin:null, showAll:false };
+    db = { start:today(), days:{}, agreed:"", checkin:null, showAll:false, practice:null };
     save(); agreedEl.value = ""; renderMoves(); renderLog(); renderReview();
   });
+
+  /* ================= PRACTICE ================= */
+
+  var SCEN = [
+    {
+      id:"evening", tag:"Time", title:"The evening you'd planned",
+      setup:"You've been at your desk since dinner. She comes to the doorway.",
+      turns:[
+        { her:"You've been on that thing all evening. Again.",
+          options:[
+            { t:"It's been an hour. That's hardly all evening.", q:"bad", move:"ack",
+              fb:"You went straight to correcting the facts. She may well be exaggerating \u2014 but arguing the number tells her the feeling doesn't count. Nothing you say after this will be heard." },
+            { t:"Fine. I'll put it away.", q:"mid", move:"ack",
+              fb:"You complied without acknowledging. That reads as being managed, not being heard \u2014 and you'll resent it by tomorrow. Compliance isn't connection." },
+            { t:"You've been out here while I've been in my own world. I get why that's annoying.", q:"good", move:"ack",
+              fb:"You named it before defending anything. Notice you conceded no ground on whether you're allowed your own time \u2014 acknowledgement isn't agreement." }
+          ] },
+        { her:{ good:"It's not even about tonight really. It just feels like I get whatever's left.",
+                mid:"It's not about putting it away. Forget it.",
+                bad:"Right. So I'm imagining it." },
+          options:[
+            { t:"That's not fair, I've made time for you plenty.", q:"bad", move:"pause",
+              fb:"The scoreboard came out. Once either of you is producing evidence, you're in a trial, not a conversation." },
+            { t:"So what would actually help?", q:"mid", move:"ask",
+              fb:"Reasonable, but early. Jumping to fixing before she's finished feeling it can land as wanting the conversation over." },
+            { t:"That's a horrible way to feel. Tell me more about that \u2014 I'd rather understand it than defend myself.", q:"good", move:"ack",
+              fb:"You stayed in it and invited more instead of closing it down. This is the move that most reliably ends the pursuit, because the pursuit was for exactly this." }
+          ] }
+      ],
+      close:"Complaints about time are rarely about hours. They're about whether time with you is chosen or left over."
+    },
+    {
+      id:"dishes", tag:"Underneath", title:"It isn't about the dishes",
+      setup:"Small thing, disproportionate reaction. She's found the sink full.",
+      turns:[
+        { her:"I can't believe you left all this. Do you ever think about anyone but yourself?",
+          options:[
+            { t:"Over some dishes? Seriously?", q:"bad", move:"pause",
+              fb:"Dismissing the scale of the reaction guarantees escalation. The size of the reaction is information \u2014 it tells you this isn't about the sink." },
+            { t:"Sorry, I'll do them now.", q:"mid", move:"ack",
+              fb:"You solved the stated problem, which means the real one stays buried and comes back next week, bigger." },
+            { t:"I'll sort them. But that landed harder than dishes \u2014 what's actually going on?", q:"good", move:"pause",
+              fb:"You handled the surface and went looking for the real thing. Disproportionate reactions are almost always a signal, not a malfunction." }
+          ] },
+        { her:{ good:"I've just felt like I'm doing everything lately and no one notices.",
+                mid:"Nothing. It's fine.",
+                bad:"Forget it. There's no point." },
+          options:[
+            { t:"You're not doing everything though. I do plenty.", q:"bad", move:"ack",
+              fb:"True, probably. Irrelevant right now. You've answered a factual claim she wasn't really making." },
+            { t:"Okay, well, let me know if you want to talk about it.", q:"mid", move:"ack",
+              fb:"You offered the door and stepped back. With someone who pursues, stepping back reads as leaving." },
+            { t:"Feeling like it goes unnoticed is rubbish. I do notice \u2014 I'm just bad at saying it.", q:"good", move:"ack",
+              fb:"You validated the feeling and owned a real gap of yours, without accepting a claim you disagree with." }
+          ] }
+      ],
+      close:"When the reaction is bigger than the trigger, the trigger isn't the subject."
+    },
+    {
+      id:"list", tag:"Old ground", title:"The list comes out",
+      setup:"You're discussing one thing. She reaches back three years.",
+      turns:[
+        { her:"And it's the same as your cousin's wedding, and that thing at Diwali, and last February \u2014 you always do this.",
+          options:[
+            { t:"We've been through all of those. You agreed they were done.", q:"bad", move:"pause",
+              fb:"Technically correct, and it will end the conversation. Enforcing a rule mid-conflict is a losing move even when the rule is right." },
+            { t:"Okay, let's go through them one by one then.", q:"mid", move:"pause",
+              fb:"You've agreed to the trial. Four hours later, nothing resolved, both exhausted." },
+            { t:"If the same thing keeps happening, that's worth hearing. Tell me what the pattern is \u2014 I'll take the pattern seriously.", q:"good", move:"pause",
+              fb:"You converted a list into a single current issue, which is exactly what you want, without refusing the past outright." }
+          ] },
+        { her:{ good:"The pattern is that I say something's wrong and you go quiet on me.",
+                mid:"See, this is what I mean, you're doing it right now.",
+                bad:"So I'm not allowed to be upset about anything that's already happened." },
+          options:[
+            { t:"I go quiet because these conversations never end.", q:"bad", move:"ack",
+              fb:"You explained your withdrawal by blaming her for causing it. That's a defence wearing an admission's clothes." },
+            { t:"I don't think that's entirely fair.", q:"mid", move:"ack",
+              fb:"Might be true. But offered here, with nothing else, it's a door closing." },
+            { t:"That's fair. I do go quiet, and I know it leaves you nowhere to go. I'm working on it.", q:"good", move:"ack",
+              fb:"You conceded the specific, accurate thing. This is what disarms an escalating argument \u2014 not agreeing with everything, agreeing with the true part." }
+          ] }
+      ],
+      close:"You can refuse the trial without refusing the grievance. Ask for the pattern, take the pattern seriously."
+    },
+    {
+      id:"work", tag:"Just listen", title:"A bad day at work",
+      setup:"She's venting about her manager. Nothing here needs solving.",
+      turns:[
+        { her:"He completely undermined me in front of everyone. I'm so done with that place.",
+          options:[
+            { t:"You should document it and go to HR.", q:"bad", move:"ask",
+              fb:"Straight to the fix. Your instinct is care \u2014 but skipping acknowledgement makes it feel like being processed." },
+            { t:"That's rough.", q:"mid", move:"ack",
+              fb:"Acknowledgement, but thin. Two words can read as waiting for her to finish." },
+            { t:"Being undermined in front of people is humiliating. No wonder you're done.", q:"good", move:"ack",
+              fb:"You named the specific feeling rather than the general category. Specific acknowledgement is what makes someone feel actually heard." }
+          ] },
+        { her:{ good:"Yeah. It's just constant.",
+                mid:"Anyway.",
+                bad:"I don't want to go to HR, I just wanted to tell you about it." },
+          options:[
+            { t:"Do you want me to just listen, or do you want to think through what to do?", q:"good", move:"ask",
+              fb:"The question that solves this permanently. It costs one sentence and hands her the choice." },
+            { t:"Well, you can't just do nothing about it.", q:"bad", move:"ask",
+              fb:"You've made her inaction the problem. Now she's defending herself instead of being supported." },
+            { t:"Let me know if you want help with it.", q:"mid", move:"ask",
+              fb:"Passive. Puts the work of asking on her, which she may not do \u2014 and then you both feel unmet." }
+          ] }
+      ],
+      close:"Ask which one she wants. You'll be right twice as often and it takes four seconds."
+    },
+    {
+      id:"undone", tag:"House", title:"The thing that didn't get done",
+      setup:"She said she'd handle it. It's been four days. You notice.",
+      turns:[
+        { her:"(nothing \u2014 she hasn't mentioned it and neither have you)",
+          options:[
+            { t:"Did you sort that thing yet? You said you would.", q:"bad", move:"own",
+              fb:"The reminder. It gets the task done and costs you a little more of the partnership \u2014 you're the manager again, and she's being managed." },
+            { t:"Do it yourself, say nothing, feel it.", q:"bad", move:"flush",
+              fb:"The worst of both. Task done, resentment banked, and she never learns it mattered. This is how contempt accumulates." },
+            { t:"Leave it. Note it. Raise the pattern on Sunday.", q:"good", move:"own",
+              fb:"Uncomfortable and correct. One undone task costs less than another week of the parent-child dynamic." }
+          ] },
+        { her:{ good:"(Sunday) Was there anything this week?",
+                mid:"(Sunday) Was there anything this week?",
+                bad:"(Sunday) Was there anything this week?" },
+          options:[
+            { t:"Yeah \u2014 you didn't do that thing, and it's the third time.", q:"bad", move:"own",
+              fb:"You saved it up and delivered it as evidence. A check-in that works this way becomes a weekly tribunal she'll start avoiding." },
+            { t:"Nothing much.", q:"mid", move:"flush",
+              fb:"You had something and swallowed it. The 48-hour rule exists precisely to stop this \u2014 unsaid things don't evaporate." },
+            { t:"One thing \u2014 I don't want to be the one chasing stuff. Can we split it so some things are just yours and I never have to ask?", q:"good", move:"own",
+              fb:"You raised the system, not the incident. Systems can be fixed; incidents can only be defended." }
+          ] }
+      ],
+      close:"Never remind. Log it, then fix the structure at the check-in."
+    },
+    {
+      id:"wrong", tag:"Hold it", title:"She's upset and you're not wrong",
+      setup:"She's accusing you of something you genuinely didn't do.",
+      turns:[
+        { her:"You deliberately ignored me at your friend's place. Everyone saw it.",
+          options:[
+            { t:"That's completely untrue and you know it.", q:"bad", move:"pause",
+              fb:"Correct and useless. Flat contradiction escalates every time, because now it's about whose account is real." },
+            { t:"Okay, I'm sorry, I didn't mean to.", q:"bad", move:"flush",
+              fb:"You apologised for something you don't believe happened. It buys quiet tonight and costs you resentment plus a precedent." },
+            { t:"I can hear you felt shut out, and that's horrible. I need to say I don't see it the way you do.", q:"good", move:"ack",
+              fb:"Acknowledge the feeling, hold the position. Both, in that order. This is the hardest move in the set and the most valuable one for you." }
+          ] },
+        { her:{ good:"So you're saying I made it up.",
+                mid:"Okay. Whatever.",
+                bad:"Don't tell me what happened, I was there." },
+          options:[
+            { t:"I'm saying you're wrong.", q:"bad", move:"pause",
+              fb:"You've made it a contest of accounts. Nobody wins one of these." },
+            { t:"Look, let's just drop it.", q:"mid", move:"flush",
+              fb:"Dropping it means burying it. It'll be back, and it'll bring friends." },
+            { t:"No \u2014 I'm saying you felt something real and I don't think I did what you think I did. Both can be true.", q:"good", move:"ack",
+              fb:"You separated her experience from your intent without dismissing either. This is the sentence to memorise." }
+          ] }
+      ],
+      close:"Acknowledge the feeling, hold the position. Calmly, and as many times as needed."
+    },
+    {
+      id:"exit", tag:"The freeze", title:"She walks off mid-argument",
+      setup:"It's getting heated. She stands up and leaves the room.",
+      turns:[
+        { her:"I'm not doing this. (leaves)",
+          options:[
+            { t:"Follow her and finish it.", q:"bad", move:"pause",
+              fb:"Pursuing someone who's flooded makes it worse. She isn't being evasive \u2014 she's over capacity." },
+            { t:"Say nothing. She left, so it's on her to come back.", q:"bad", move:"flush",
+              fb:"Technically defensible. It's also the start of a three-day freeze, and you know how those end." },
+            { t:"Let her go, then within the hour: \u201cI'm not chasing you, but I'm not going anywhere either. When you're ready.\u201d", q:"good", move:"pause",
+              fb:"You gave her the space and removed the abandonment at the same time. That short line prevents most freezes." }
+          ] },
+        { her:{ good:"(an hour later) Sorry. I couldn't do it any more in that moment.",
+                mid:"(next morning, nothing)",
+                bad:"(next morning, nothing)" },
+          options:[
+            { t:"You always walk off.", q:"bad", move:"pause",
+              fb:"She came back or the silence is holding \u2014 either way, opening with an accusation restarts the fight from a worse position." },
+            { t:"Wait for her to raise it.", q:"mid", move:"flush",
+              fb:"Waiting is the reflex dressed as principle. Ask yourself honestly which one this is." },
+            { t:"It's alright. Can we agree that whoever needs the break says when we're coming back to it?", q:"good", move:"own",
+              fb:"You fixed the rule instead of prosecuting the incident, at the one moment she's able to hear it." }
+          ] }
+      ],
+      close:"Don't chase, don't disappear. \u201cI'm here when you're ready\u201d is the whole move."
+    },
+    {
+      id:"nothing", tag:"Check-in", title:"\u201cNothing's wrong\u201d",
+      setup:"Sunday. She's clearly off, and says she isn't.",
+      turns:[
+        { her:"Nothing. I'm fine.",
+          options:[
+            { t:"Okay.", q:"bad", move:"bids",
+              fb:"You accepted the surface answer and closed the door. To her, that confirms you'd rather not know." },
+            { t:"You're obviously not fine.", q:"bad", move:"ack",
+              fb:"You've told her she's wrong about her own state. Now she has to defend the denial." },
+            { t:"Alright. I'm around if it turns into something \u2014 I'm not going to keep asking, but I'd like to know.", q:"good", move:"bids",
+              fb:"Door open, no pressure, no pursuit. This is what makes it safe for her to come back in ten minutes." }
+          ] }
+      ],
+      close:"\u201cFine\u201d usually means not yet. Leave the door open without standing in it."
+    },
+    {
+      id:"never", tag:"Hold it", title:"\u201cYou never\u2026\u201d",
+      setup:"An absolute statement. Easy to disprove, and disproving it is a trap.",
+      turns:[
+        { her:"You never make an effort with my family.",
+          options:[
+            { t:"I went to your cousin's thing in March.", q:"bad", move:"pause",
+              fb:"Counter-example produced. You've now won a technical point and lost the conversation \u2014 the word \u2018never\u2019 was emphasis, not testimony." },
+            { t:"That's not true and it's not fair.", q:"bad", move:"ack",
+              fb:"Two rejections in one sentence and nothing acknowledged. Expect escalation." },
+            { t:"Something's clearly not landing right with my family. What is it you'd want me to do differently?", q:"good", move:"ask",
+              fb:"You ignored the absolute and went for the actual request. Absolutes are almost always covering a specific, reasonable ask." }
+          ] }
+      ],
+      close:"Never argue with \u2018never\u2019. Go looking for the specific request hiding behind it."
+    },
+    {
+      id:"raise", tag:"Your turn", title:"Something's bothering you",
+      setup:"Two days ago she said something that stung. You've said nothing.",
+      turns:[
+        { her:"(a calm evening, nothing wrong)",
+          options:[
+            { t:"Let it go. It's not worth a fight.", q:"bad", move:"flush",
+              fb:"It doesn't go anywhere. It goes into the pile, and the pile is what makes you cold." },
+            { t:"Save it for the next argument when it'll prove your point.", q:"bad", move:"flush",
+              fb:"This is exactly how ammunition gets stockpiled. You've criticised her for doing it." },
+            { t:"\u201cCan I say something \u2014 it's small. When you said X the other day, it stung a bit.\u201d", q:"good", move:"flush",
+              fb:"Small, early, low-stakes, no accusation. Said this way it costs almost nothing; said in six weeks it costs an evening." }
+          ] },
+        { her:{ good:"Oh \u2014 I didn't mean it like that at all.",
+                mid:"(never said)",
+                bad:"(never said)" },
+          options:[
+            { t:"Well, it came across badly.", q:"mid", move:"ack",
+              fb:"You got the admission and pressed. The point was to say it, not to win it." },
+            { t:"That's alright \u2014 I just didn't want it sitting there.", q:"good", move:"flush",
+              fb:"You closed it cleanly. Nothing banked. This is what stops resentment turning into contempt." },
+            { t:"You say that, but you do it a lot.", q:"bad", move:"pause",
+              fb:"You escalated a small thing into a pattern accusation. Now she'll be wary next time you say \u2018can I say something small\u2019." }
+          ] }
+      ],
+      close:"Say it inside two days, while it's still small enough to be information rather than evidence."
+    },
+    {
+      id:"myfault", tag:"Own it", title:"It actually is your fault",
+      setup:"You forgot something that mattered to her. No defence available.",
+      turns:[
+        { her:"You forgot. You actually forgot.",
+          options:[
+            { t:"I've had a lot on, you know that.", q:"bad", move:"ack",
+              fb:"An explanation offered instead of an acknowledgement. This is the exact thing you resent when it comes the other way." },
+            { t:"I'm so sorry, I'm useless, I always do this, I don't know why you put up with me.", q:"bad", move:"ack",
+              fb:"Over-apologising makes her comfort you. Now she's managing your guilt instead of having her own feeling." },
+            { t:"I did. There's no excuse for it and I'm sorry \u2014 it mattered and I dropped it.", q:"good", move:"ack",
+              fb:"Clean. No explanation, no self-flagellation. Accountability is short." }
+          ] },
+        { her:{ good:"Thank you for just saying that.",
+                mid:"It's fine.",
+                bad:"You always have a reason." },
+          options:[
+            { t:"So are we okay?", q:"mid", move:"pause",
+              fb:"Asking for reassurance moves you to the centre again, three seconds after apologising." },
+            { t:"I'll set a reminder so it doesn't happen again.", q:"good", move:"own",
+              fb:"A concrete change offered without being asked. This is what converts an apology into something she can believe." },
+            { t:"Right, well, I've said sorry.", q:"bad", move:"ack",
+              fb:"You cashed the apology in for a receipt. It undoes the whole thing." }
+          ] }
+      ],
+      close:"Own it in one sentence, change one thing, don't ask to be forgiven."
+    },
+    {
+      id:"small", tag:"Turn toward", title:"The small stuff",
+      setup:"No conflict at all. This is the one that does the most work.",
+      turns:[
+        { her:"(holds out her phone) Look at this.",
+          options:[
+            { t:"Mm. (keep reading)", q:"bad", move:"bids",
+              fb:"A missed bid. One doesn't matter. Two hundred is what makes the next argument bitter rather than routine." },
+            { t:"(glance) Yeah, funny.", q:"mid", move:"bids",
+              fb:"Registered but barely. Better than nothing and not much better." },
+            { t:"(look properly) Ha \u2014 where's that from?", q:"good", move:"bids",
+              fb:"Ten seconds, full attention, one question back. Do this ten times a day and the serious conversations get easier without either of you noticing why." }
+          ] }
+      ],
+      close:"This is the highest-yield thing in the whole app, and the one that feels least like work."
+    }
+  ];
+
+  var pracIdx = 0, pracTurn = 0, pracQ = "good", pracBeat = null;
+
+  function pracStats(){
+    if(!db.practice) db.practice = { reps:0, last:null, good:0, total:0 };
+    return db.practice;
+  }
+
+  function renderPracHome(){
+    var s = pracStats();
+    $("#pracCount").textContent = s.reps;
+    $("#pracRate").textContent = s.total ? Math.round(100*s.good/s.total) + "%" : "\u2014";
+    $("#pracList").innerHTML = SCEN.map(function(sc, i){
+      return '<div class="card move" data-i="'+i+'"><div class="row">'
+        + '<span class="dot"></span><h2>'+sc.title+'</h2>'
+        + '<span class="ph">'+sc.tag+'</span></div></div>';
+    }).join("");
+    Array.prototype.forEach.call($("#pracList").querySelectorAll(".card"), function(el){
+      el.addEventListener("click", function(){ openScen(+el.dataset.i); });
+    });
+  }
+
+  function openScen(i){
+    pracIdx = i; pracTurn = 0; pracQ = "good";
+    $("#pracHome").style.display = "none";
+    $("#pracRun").style.display = "";
+    window.scrollTo(0,0);
+    renderTurn();
+  }
+
+  function closeScen(){
+    clearInterval(pracBeat);
+    $("#pracRun").style.display = "none";
+    $("#pracHome").style.display = "";
+    renderPracHome(); renderReview();
+    window.scrollTo(0,0);
+  }
+
+  function renderTurn(){
+    clearInterval(pracBeat);
+    var sc = SCEN[pracIdx], t = sc.turns[pracTurn];
+    var line = typeof t.her === "string" ? t.her : (t.her[pracQ] || t.her.good);
+
+    $("#pracTitle").textContent = sc.title;
+    $("#pracSetup").textContent = pracTurn === 0 ? sc.setup : "";
+    $("#pracSetup").style.display = pracTurn === 0 ? "" : "none";
+    $("#pracHer").textContent = line;
+    $("#pracFb").style.display = "none";
+    $("#pracNext").style.display = "none";
+    $("#pracOpts").style.display = "none";
+
+    var n = 4;
+    $("#pracBeat").style.display = "";
+    $("#pracBeat").textContent = "Sit with it. Notice what you want to say. \u00b7 " + n;
+    pracBeat = setInterval(function(){
+      n--;
+      $("#pracBeat").textContent = "Sit with it. Notice what you want to say. \u00b7 " + n;
+      if(n <= 0){
+        clearInterval(pracBeat);
+        $("#pracBeat").style.display = "none";
+        showOpts(t);
+      }
+    }, 1000);
+  }
+
+  function showOpts(t){
+    var box = $("#pracOpts");
+    box.style.display = "";
+    box.innerHTML = t.options.map(function(o, k){
+      return '<button class="opt" data-k="'+k+'">'+o.t+'</button>';
+    }).join("");
+    Array.prototype.forEach.call(box.querySelectorAll(".opt"), function(el){
+      el.addEventListener("click", function(){ choose(t, +el.dataset.k); });
+    });
+  }
+
+  function choose(t, k){
+    var o = t.options[k], sc = SCEN[pracIdx], s = pracStats();
+    pracQ = o.q;
+    s.total++; if(o.q === "good") s.good++;
+    save();
+
+    Array.prototype.forEach.call($("#pracOpts").querySelectorAll(".opt"), function(el, i){
+      el.disabled = true;
+      if(i === k) el.dataset.q = o.q;
+      else el.style.opacity = ".38";
+    });
+
+    var mv = MOVES.filter(function(m){ return m.id === o.move; })[0];
+    $("#pracFb").style.display = "";
+    $("#pracFb").innerHTML = '<span class="lbl">'+(mv ? mv.name : "Note")+'</span><p>'+o.fb+'</p>';
+
+    var last = pracTurn >= sc.turns.length - 1;
+    $("#pracNext").style.display = "";
+    $("#pracNext").textContent = last ? "Finish" : "What she says next";
+    $("#pracNext").onclick = function(){
+      if(last){
+        s.reps++; s.last = today(); save();
+        $("#pracFb").innerHTML = '<span class="lbl">Takeaway</span><p>'+sc.close+'</p>';
+        $("#pracOpts").style.display = "none";
+        $("#pracHer").textContent = "";
+        $("#pracNext").textContent = "Done";
+        $("#pracNext").onclick = closeScen;
+      } else {
+        pracTurn++; renderTurn(); window.scrollTo(0,0);
+      }
+    };
+  }
+
+  $("#pracRandom").addEventListener("click", function(){
+    openScen(Math.floor(Math.random()*SCEN.length));
+  });
+  $("#pracQuit").addEventListener("click", closeScen);
 
   /* ---------- nav ---------- */
   Array.prototype.forEach.call(document.querySelectorAll("nav button"), function(b){
@@ -593,6 +1073,7 @@
         s.classList.toggle("on", s.id === "s-" + b.dataset.s);
       });
       if(b.dataset.s === "log"){ viewDate = today(); renderLog(); }
+      if(b.dataset.s === "practice") renderPracHome();
       if(b.dataset.s === "review") renderReview();
       window.scrollTo(0,0);
     });
@@ -601,7 +1082,7 @@
   /* ---------- boot ---------- */
   load();
   agreedEl.value = db.agreed || "";
-  renderMoves(); renderLog(); renderReview();
+  renderMoves(); renderLog(); renderReview(); renderPracHome();
 
   if("serviceWorker" in navigator){
     window.addEventListener("load", function(){
