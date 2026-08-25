@@ -1,0 +1,614 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#10171D">
+<title>The Gap</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-192.png">
+<style>
+  :root{
+    --ink:#10171D;
+    --surface:#18222A;
+    --surface-2:#1F2B34;
+    --line:#2C3A44;
+    --text:#E6EDEA;
+    --muted:#8496A0;
+    --signal:#6FB2A0;
+    --signal-dim:rgba(111,178,160,.13);
+    --miss:#B5746A;
+    --miss-dim:rgba(181,116,106,.13);
+    --mono:ui-monospace,"Roboto Mono","SF Mono",Menlo,Consolas,monospace;
+    --sans:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    --r:14px;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;padding:0}
+  body{
+    background:var(--ink);color:var(--text);font-family:var(--sans);
+    font-size:16px;line-height:1.5;
+    padding-bottom:calc(78px + env(safe-area-inset-bottom));
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:560px;margin:0 auto;padding:0 18px}
+
+  /* ---------- type ---------- */
+  .eyebrow{
+    font-family:var(--mono);font-size:10.5px;letter-spacing:.16em;
+    text-transform:uppercase;color:var(--muted);
+  }
+  h1{
+    font-size:27px;line-height:1.12;letter-spacing:-.028em;
+    font-weight:600;margin:.28em 0 0;
+  }
+  h2{font-size:15px;letter-spacing:-.01em;font-weight:600;margin:0}
+  p{margin:.5em 0}
+  .sub{color:var(--muted);font-size:14px}
+
+  header.top{padding:calc(26px + env(safe-area-inset-top)) 0 18px}
+
+  /* ---------- pause ---------- */
+  .pause-btn{
+    width:100%;border:1px solid var(--line);background:var(--surface);
+    color:var(--text);border-radius:var(--r);padding:22px 20px;
+    display:flex;align-items:center;gap:16px;cursor:pointer;
+    text-align:left;font:inherit;transition:background .15s,border-color .15s;
+  }
+  .pause-btn:active{background:var(--surface-2)}
+  .pause-btn:focus-visible{outline:2px solid var(--signal);outline-offset:2px}
+  .ring{
+    width:44px;height:44px;flex:none;border-radius:50%;
+    border:2px solid var(--signal);position:relative;
+  }
+  .ring::after{
+    content:"";position:absolute;inset:9px;border-radius:50%;
+    background:var(--signal);opacity:.75;
+  }
+  .pause-btn b{display:block;font-size:17px;font-weight:600;letter-spacing:-.015em}
+  .pause-btn span{display:block;color:var(--muted);font-size:13px;margin-top:2px}
+
+  /* ---------- cards ---------- */
+  section{margin-top:30px}
+  .sec-head{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:11px}
+  .card{
+    background:var(--surface);border:1px solid var(--line);
+    border-radius:var(--r);padding:15px 16px;margin-bottom:9px;
+  }
+  .move{cursor:pointer}
+  .move .row{display:flex;align-items:center;gap:11px}
+  .dot{width:7px;height:7px;border-radius:50%;background:var(--muted);flex:none}
+  .move.active .dot{background:var(--signal);box-shadow:0 0 0 4px var(--signal-dim)}
+  .move .ph{margin-left:auto;font-family:var(--mono);font-size:10px;color:var(--muted);letter-spacing:.08em}
+  .move .body{
+    display:none;margin-top:12px;padding-top:12px;border-top:1px solid var(--line);
+  }
+  .move.open .body{display:block}
+  .lbl{font-family:var(--mono);font-size:10px;letter-spacing:.14em;color:var(--muted);text-transform:uppercase}
+  .move .body p{margin:3px 0 12px;font-size:14.5px}
+  .move .body p:last-child{margin-bottom:0}
+  .move .body .do{color:var(--signal)}
+
+  /* ---------- log ---------- */
+  .daynav{display:flex;align-items:center;gap:10px;margin-bottom:14px}
+  .daynav button{
+    background:var(--surface);border:1px solid var(--line);color:var(--text);
+    width:34px;height:34px;border-radius:9px;font-size:15px;cursor:pointer;flex:none;
+  }
+  .daynav button:disabled{opacity:.32;cursor:default}
+  .daynav .d{font-family:var(--mono);font-size:12px;letter-spacing:.08em;color:var(--muted)}
+
+  .chip{
+    width:100%;display:flex;align-items:center;gap:11px;text-align:left;
+    background:var(--surface);border:1px solid var(--line);color:var(--text);
+    border-radius:11px;padding:13px 14px;margin-bottom:8px;font:inherit;cursor:pointer;
+    transition:border-color .15s,background .15s;
+  }
+  .chip .mark{
+    width:20px;height:20px;border-radius:6px;border:1.5px solid var(--line);
+    flex:none;display:grid;place-items:center;font-size:12px;font-weight:700;color:var(--ink);
+  }
+  .chip .nm{font-size:14.5px}
+  .chip .st{margin-left:auto;font-family:var(--mono);font-size:10px;letter-spacing:.1em;color:var(--muted)}
+  .chip[data-v="used"]{border-color:var(--signal);background:var(--signal-dim)}
+  .chip[data-v="used"] .mark{background:var(--signal);border-color:var(--signal)}
+  .chip[data-v="used"] .mark::after{content:"✓"}
+  .chip[data-v="used"] .st{color:var(--signal)}
+  .chip[data-v="missed"]{border-color:var(--miss);background:var(--miss-dim)}
+  .chip[data-v="missed"] .mark{background:var(--miss);border-color:var(--miss)}
+  .chip[data-v="missed"] .mark::after{content:"–"}
+  .chip[data-v="missed"] .st{color:var(--miss)}
+  .chip:focus-visible{outline:2px solid var(--signal);outline-offset:2px}
+
+  .seg{display:flex;gap:7px;margin-bottom:8px}
+  .seg button{
+    flex:1;background:var(--surface);border:1px solid var(--line);color:var(--muted);
+    border-radius:10px;padding:11px 6px;font:inherit;font-size:13px;cursor:pointer;
+  }
+  .seg button[aria-pressed="true"]{border-color:var(--signal);color:var(--text);background:var(--signal-dim)}
+
+  textarea{
+    width:100%;background:var(--surface);border:1px solid var(--line);color:var(--text);
+    border-radius:11px;padding:13px 14px;font:inherit;font-size:14.5px;resize:vertical;min-height:74px;
+  }
+  textarea:focus{outline:none;border-color:var(--signal)}
+  textarea::placeholder{color:#5D6E78}
+  .field{margin-bottom:12px}
+  .field .lbl{display:block;margin-bottom:6px}
+
+  .saved{font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;color:var(--signal);opacity:0;transition:opacity .3s}
+  .saved.on{opacity:1}
+
+  /* ---------- review ---------- */
+  .grid-row{display:flex;align-items:center;gap:9px;margin-bottom:9px}
+  .grid-row .nm{font-size:13px;width:96px;flex:none;color:var(--muted)}
+  .cells{display:flex;gap:3px;flex:1}
+  .cell{flex:1;height:26px;border-radius:3px;background:var(--surface-2)}
+  .cell.used{background:var(--signal)}
+  .cell.missed{background:var(--miss)}
+  .stat{display:flex;gap:9px;margin-bottom:9px}
+  .stat .card{flex:1;margin:0;text-align:center;padding:16px 8px}
+  .stat .n{font-family:var(--mono);font-size:25px;letter-spacing:-.02em;display:block}
+  .stat .k{font-family:var(--mono);font-size:9.5px;letter-spacing:.13em;color:var(--muted);text-transform:uppercase}
+  .callout{border-left:2px solid var(--miss);padding-left:13px;margin:16px 0}
+  .callout .lbl{color:var(--miss)}
+  .ghost{
+    width:100%;background:none;border:1px solid var(--line);color:var(--muted);
+    border-radius:11px;padding:13px;font:inherit;font-size:13.5px;cursor:pointer;margin-top:8px;
+  }
+  .ghost:active{background:var(--surface)}
+
+  /* ---------- nav ---------- */
+  nav{
+    position:fixed;left:0;right:0;bottom:0;background:rgba(16,23,29,.94);
+    backdrop-filter:blur(12px);border-top:1px solid var(--line);
+    padding-bottom:env(safe-area-inset-bottom);z-index:20;
+  }
+  nav .inner{max-width:560px;margin:0 auto;display:flex}
+  nav button{
+    flex:1;background:none;border:0;color:var(--muted);padding:15px 4px 16px;
+    font-family:var(--mono);font-size:10.5px;letter-spacing:.15em;text-transform:uppercase;cursor:pointer;
+    border-top:2px solid transparent;margin-top:-1px;
+  }
+  nav button[aria-current="true"]{color:var(--text);border-top-color:var(--signal)}
+
+  .screen{display:none}
+  .screen.on{display:block}
+
+  /* ---------- pause overlay ---------- */
+  #overlay{
+    position:fixed;inset:0;background:var(--ink);z-index:40;display:none;
+    flex-direction:column;align-items:center;justify-content:center;padding:32px;text-align:center;
+  }
+  #overlay.on{display:flex}
+  .breath{
+    width:190px;height:190px;border-radius:50%;border:1.5px solid var(--line);
+    display:grid;place-items:center;margin-bottom:34px;position:relative;
+  }
+  .breath i{
+    position:absolute;inset:0;border-radius:50%;border:2px solid var(--signal);
+    animation:breathe 5s ease-in-out infinite;
+  }
+  @keyframes breathe{0%,100%{transform:scale(.52);opacity:.95}50%{transform:scale(1);opacity:.35}}
+  .breath .count{font-family:var(--mono);font-size:32px;letter-spacing:-.02em}
+  #qtext{font-size:20px;line-height:1.35;letter-spacing:-.02em;max-width:15em;min-height:2.7em;transition:opacity .4s}
+  #overlay .ghost{max-width:260px;margin-top:30px}
+  @media (prefers-reduced-motion:reduce){
+    .breath i{animation:none;transform:scale(.78)}
+    *{transition:none!important}
+  }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+
+  <!-- ============ NOW ============ -->
+  <div class="screen on" id="s-now">
+    <header class="top">
+      <div class="eyebrow">The gap between what happens and what you do</div>
+      <h1>The Gap</h1>
+    </header>
+
+    <button class="pause-btn" id="startPause">
+      <div class="ring"></div>
+      <div>
+        <b>Pause</b>
+        <span>Ten seconds. Three questions.</span>
+      </div>
+    </button>
+
+    <section>
+      <div class="sec-head">
+        <div class="eyebrow">The moves</div>
+        <div class="eyebrow" id="phaseLabel">Phase 1</div>
+      </div>
+      <div id="moveList"></div>
+      <button class="ghost" id="phaseBtn">Show all phases</button>
+    </section>
+
+    <section>
+      <div class="sec-head"><div class="eyebrow">Agreed with F</div><div class="saved" id="sv-agreed">Saved</div></div>
+      <div class="field">
+        <textarea id="agreed" placeholder="After you talk it through, put what you actually agreed here. Written down, in her words as much as yours."></textarea>
+      </div>
+    </section>
+  </div>
+
+  <!-- ============ LOG ============ -->
+  <div class="screen" id="s-log">
+    <header class="top">
+      <div class="eyebrow">Twenty seconds</div>
+      <h1>Today's log</h1>
+    </header>
+
+    <div class="daynav">
+      <button id="prevDay" aria-label="Previous day">‹</button>
+      <button id="nextDay" aria-label="Next day">›</button>
+      <div class="d" id="dayLabel"></div>
+      <div class="saved" id="sv-log" style="margin-left:auto">Saved</div>
+    </div>
+
+    <div id="chipList"></div>
+
+    <section>
+      <div class="sec-head"><div class="eyebrow">Friction today</div></div>
+      <div class="seg" id="fricSeg">
+        <button data-v="none">None</button>
+        <button data-v="minor">Minor</button>
+        <button data-v="real">Real argument</button>
+      </div>
+    </section>
+
+    <section id="aarBlock">
+      <div class="sec-head"><div class="eyebrow">After-action</div></div>
+      <div class="field">
+        <span class="lbl">What set it off</span>
+        <textarea id="aar1" placeholder="What actually happened, plainly. Not who was right."></textarea>
+      </div>
+      <div class="field">
+        <span class="lbl">What I'd do differently</span>
+        <textarea id="aar2" placeholder="One thing. Small enough to actually do next time."></textarea>
+      </div>
+    </section>
+  </div>
+
+  <!-- ============ REVIEW ============ -->
+  <div class="screen" id="s-review">
+    <header class="top">
+      <div class="eyebrow">Last fourteen days</div>
+      <h1>Review</h1>
+    </header>
+
+    <div class="stat">
+      <div class="card"><span class="n" id="stDays">0</span><span class="k">Days logged</span></div>
+      <div class="card"><span class="n" id="stUsed">0</span><span class="k">Moves used</span></div>
+      <div class="card"><span class="n" id="stCalm">0</span><span class="k">Calm days</span></div>
+    </div>
+
+    <section>
+      <div class="sec-head"><div class="eyebrow">Pattern</div></div>
+      <div id="gridWrap"></div>
+    </section>
+
+    <div class="callout" id="weakSpot" style="display:none">
+      <div class="lbl">Watch this</div>
+      <p id="weakText"></p>
+    </div>
+
+    <section>
+      <div class="sec-head"><div class="eyebrow">Weekly check-in</div></div>
+      <div class="card">
+        <p class="sub" style="margin:0 0 10px">Twenty minutes, same time each week. Patterns get raised here — not in the moment.</p>
+        <div class="eyebrow" id="lastCheckin">Not held yet</div>
+        <button class="ghost" id="checkinBtn" style="margin-top:11px">Mark this week's check-in held</button>
+      </div>
+    </section>
+
+    <section>
+      <div class="sec-head"><div class="eyebrow">Your data</div></div>
+      <p class="sub" style="margin-top:0">Everything stays on this phone. Nothing is sent anywhere.</p>
+      <button class="ghost" id="exportBtn">Export a copy</button>
+      <button class="ghost" id="wipeBtn">Erase everything</button>
+    </section>
+  </div>
+
+</div>
+
+<nav>
+  <div class="inner">
+    <button data-s="now" aria-current="true">Now</button>
+    <button data-s="log">Log</button>
+    <button data-s="review">Review</button>
+  </div>
+</nav>
+
+<div id="overlay">
+  <div class="breath"><i></i><div class="count" id="count">10</div></div>
+  <div id="qtext"></div>
+  <button class="ghost" id="closeOverlay">End early</button>
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  var MOVES = [
+    { id:"pause", phase:1, name:"The Pause",
+      trigger:"The pull to go quiet, to sigh, to think \u201chere we go again.\u201d",
+      action:"Stop. Ten seconds. What actually happened? What is she actually asking for? What\u2019s actually mine here?" },
+    { id:"bids", phase:1, name:"Turn toward",
+      trigger:"She says something small \u2014 shows you her phone, mentions her day, sighs.",
+      action:"Answer it. Look up, ask one thing back. Ten seconds is enough. Do this often and the big conversations get smaller." },
+    { id:"ack", phase:2, name:"Acknowledge first",
+      trigger:"She\u2019s upset \u2014 complaint, frustration, tears, any form.",
+      action:"Your first sentence names the feeling. \u201cThat sounds really frustrating.\u201d Then stop talking." },
+    { id:"ask", phase:2, name:"Ask before fixing",
+      trigger:"You feel the pull to solve it.",
+      action:"\u201cDo you want me to just listen, or help figure this out?\u201d Then do whichever she says." },
+    { id:"own", phase:3, name:"No reminders",
+      trigger:"You notice something undone that you\u2019d normally nag about, or quietly redo yourself.",
+      action:"Say nothing now. Log it here. Raise the pattern at the weekly check-in, never in the moment." },
+    { id:"flush", phase:3, name:"48-hour flush",
+      trigger:"Something bothered you and you\u2019re about to let it go unsaid.",
+      action:"Say it inside two days. Plainly, as information, not as a charge: \u201cWhen X happened, I felt Y.\u201d" }
+  ];
+
+  var QUESTIONS = [
+    "What actually happened?",
+    "What is she actually asking for?",
+    "What\u2019s actually mine here?"
+  ];
+
+  /* ---------- storage ---------- */
+  var KEY = "gap.v1";
+  var db = { start:null, days:{}, agreed:"", checkin:null, showAll:false };
+  var storageOK = true;
+
+  function load(){
+    try{
+      var raw = localStorage.getItem(KEY);
+      if(raw) db = Object.assign(db, JSON.parse(raw));
+      if(!db.start){ db.start = today(); save(); }
+    }catch(e){ storageOK = false; }
+  }
+  function save(){
+    if(!storageOK) return;
+    try{ localStorage.setItem(KEY, JSON.stringify(db)); }catch(e){ storageOK = false; }
+  }
+  function today(){ return iso(new Date()); }
+  function iso(d){
+    return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
+  }
+  function parse(dstr){
+    var p = dstr.split("-");
+    return new Date(+p[0], +p[1]-1, +p[2]);
+  }
+  function shift(dstr, n){
+    var p = dstr.split("-");
+    var d = new Date(+p[0], +p[1]-1, +p[2]);
+    d.setDate(d.getDate()+n);
+    return iso(d);
+  }
+  function day(dstr){
+    if(!db.days[dstr]) db.days[dstr] = { moves:{}, friction:null, aar1:"", aar2:"" };
+    return db.days[dstr];
+  }
+  function currentPhase(){
+    if(!db.start) return 1;
+    var ms = parse(today()) - parse(db.start);
+    var w = Math.floor(ms/(1000*60*60*24*7));
+    if(w < 3) return 1;
+    if(w < 6) return 2;
+    return 3;
+  }
+
+  var $ = function(s){ return document.querySelector(s); };
+  function flash(el){ el.classList.add("on"); setTimeout(function(){ el.classList.remove("on"); }, 1100); }
+
+  /* ---------- NOW ---------- */
+  function renderMoves(){
+    var ph = currentPhase();
+    $("#phaseLabel").textContent = "Phase " + ph;
+    var list = MOVES.filter(function(m){ return db.showAll || m.phase <= ph; });
+    $("#phaseBtn").textContent = db.showAll ? "Show only what I'm working on" : "Show all phases";
+    $("#moveList").innerHTML = list.map(function(m){
+      return '<div class="card move'+(m.phase<=ph?" active":"")+'" data-id="'+m.id+'">'
+        + '<div class="row"><span class="dot"></span><h2>'+m.name+'</h2>'
+        + '<span class="ph">P'+m.phase+'</span></div>'
+        + '<div class="body"><span class="lbl">When</span><p>'+m.trigger+'</p>'
+        + '<span class="lbl">Do</span><p class="do">'+m.action+'</p></div></div>';
+    }).join("");
+    Array.prototype.forEach.call(document.querySelectorAll(".move"), function(el){
+      el.addEventListener("click", function(){ el.classList.toggle("open"); });
+    });
+  }
+  $("#phaseBtn").addEventListener("click", function(){ db.showAll = !db.showAll; save(); renderMoves(); });
+
+  var agreedEl = $("#agreed");
+  agreedEl.addEventListener("input", function(){
+    db.agreed = agreedEl.value; save(); flash($("#sv-agreed"));
+  });
+
+  /* ---------- PAUSE RITUAL ---------- */
+  var timer = null;
+  $("#startPause").addEventListener("click", function(){
+    var ov = $("#overlay"), n = 10, qi = -1;
+    ov.classList.add("on");
+    $("#count").textContent = n;
+    function nextQ(){
+      qi++;
+      var q = $("#qtext");
+      q.style.opacity = 0;
+      setTimeout(function(){
+        q.textContent = QUESTIONS[qi] || "Now answer her.";
+        q.style.opacity = 1;
+      }, 260);
+    }
+    nextQ();
+    timer = setInterval(function(){
+      n--;
+      $("#count").textContent = Math.max(n,0);
+      if(n === 7 || n === 4) nextQ();
+      if(n <= 0){
+        clearInterval(timer);
+        nextQ();
+        var d = day(today());
+        if(d.moves.pause !== "missed") d.moves.pause = "used";
+        save();
+        setTimeout(closeOv, 2600);
+      }
+    }, 1000);
+  });
+  function closeOv(){
+    clearInterval(timer);
+    $("#overlay").classList.remove("on");
+    renderLog(); renderReview();
+  }
+  $("#closeOverlay").addEventListener("click", closeOv);
+
+  /* ---------- LOG ---------- */
+  var viewDate = today();
+  var ORDER = ["used","missed",null];
+
+  function renderLog(){
+    var d = day(viewDate);
+    $("#dayLabel").textContent = viewDate === today() ? "Today" :
+      parse(viewDate).toLocaleDateString(undefined,{weekday:"short",day:"numeric",month:"short"});
+    $("#nextDay").disabled = viewDate >= today();
+    $("#prevDay").disabled = viewDate <= shift(today(), -6);
+
+    var ph = currentPhase();
+    $("#chipList").innerHTML = MOVES.filter(function(m){ return db.showAll || m.phase <= ph; }).map(function(m){
+      var v = d.moves[m.id] || "";
+      return '<button class="chip" data-id="'+m.id+'"'+(v?' data-v="'+v+'"':'')+'>'
+        + '<span class="mark"></span><span class="nm">'+m.name+'</span>'
+        + '<span class="st">'+(v==="used"?"Used":v==="missed"?"Missed it":"Tap")+'</span></button>';
+    }).join("");
+
+    Array.prototype.forEach.call(document.querySelectorAll(".chip"), function(el){
+      el.addEventListener("click", function(){
+        var id = el.dataset.id, cur = day(viewDate).moves[id] || null;
+        var nxt = ORDER[(ORDER.indexOf(cur)+1) % ORDER.length];
+        if(nxt) day(viewDate).moves[id] = nxt; else delete day(viewDate).moves[id];
+        save(); flash($("#sv-log")); renderLog(); renderReview();
+      });
+    });
+
+    Array.prototype.forEach.call(document.querySelectorAll("#fricSeg button"), function(b){
+      b.setAttribute("aria-pressed", d.friction === b.dataset.v ? "true" : "false");
+    });
+    $("#aarBlock").style.display = (d.friction && d.friction !== "none") ? "" : "none";
+    $("#aar1").value = d.aar1 || "";
+    $("#aar2").value = d.aar2 || "";
+  }
+
+  Array.prototype.forEach.call(document.querySelectorAll("#fricSeg button"), function(b){
+    b.addEventListener("click", function(){
+      day(viewDate).friction = b.dataset.v;
+      save(); flash($("#sv-log")); renderLog(); renderReview();
+    });
+  });
+  ["aar1","aar2"].forEach(function(k){
+    $("#"+k).addEventListener("input", function(){
+      day(viewDate)[k] = $("#"+k).value; save(); flash($("#sv-log"));
+    });
+  });
+  $("#prevDay").addEventListener("click", function(){ viewDate = shift(viewDate,-1); renderLog(); });
+  $("#nextDay").addEventListener("click", function(){ viewDate = shift(viewDate, 1); renderLog(); });
+
+  /* ---------- REVIEW ---------- */
+  function renderReview(){
+    var days = [], i;
+    for(i=13;i>=0;i--) days.push(shift(today(), -i));
+
+    var logged = 0, used = 0, calm = 0;
+    days.forEach(function(ds){
+      var d = db.days[ds];
+      if(!d) return;
+      var n = Object.keys(d.moves).length;
+      if(n || d.friction) logged++;
+      Object.keys(d.moves).forEach(function(k){ if(d.moves[k]==="used") used++; });
+      if(d.friction === "none") calm++;
+    });
+    $("#stDays").textContent = logged;
+    $("#stUsed").textContent = used;
+    $("#stCalm").textContent = calm;
+
+    var ph = currentPhase();
+    var shown = MOVES.filter(function(m){ return db.showAll || m.phase <= ph; });
+    $("#gridWrap").innerHTML = shown.map(function(m){
+      var cells = days.map(function(ds){
+        var v = (db.days[ds] && db.days[ds].moves[m.id]) || "";
+        return '<div class="cell '+v+'"></div>';
+      }).join("");
+      return '<div class="grid-row"><span class="nm">'+m.name+'</span><div class="cells">'+cells+'</div></div>';
+    }).join("");
+
+    var worst = null;
+    shown.forEach(function(m){
+      var miss = 0;
+      days.forEach(function(ds){
+        if(db.days[ds] && db.days[ds].moves[m.id] === "missed") miss++;
+      });
+      if(miss >= 2 && (!worst || miss > worst.n)) worst = { m:m, n:miss };
+    });
+    if(worst){
+      $("#weakSpot").style.display = "";
+      $("#weakText").textContent = "\u201C" + worst.m.name + "\u201D is the one slipping \u2014 "
+        + worst.n + " misses in the last fortnight. That\u2019s where the next fortnight goes.";
+    } else {
+      $("#weakSpot").style.display = "none";
+    }
+
+    $("#lastCheckin").textContent = db.checkin
+      ? "Last held " + parse(db.checkin).toLocaleDateString(undefined,{day:"numeric",month:"short"})
+      : "Not held yet";
+  }
+
+  $("#checkinBtn").addEventListener("click", function(){ db.checkin = today(); save(); renderReview(); });
+
+  $("#exportBtn").addEventListener("click", function(){
+    var blob = new Blob([JSON.stringify(db,null,2)], {type:"application/json"});
+    var a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "the-gap-" + today() + ".json";
+    a.click();
+    setTimeout(function(){ URL.revokeObjectURL(a.href); }, 1000);
+  });
+  $("#wipeBtn").addEventListener("click", function(){
+    if(!confirm("Erase every log and note on this device? This can't be undone.")) return;
+    try{ localStorage.removeItem(KEY); }catch(e){}
+    db = { start:today(), days:{}, agreed:"", checkin:null, showAll:false };
+    save(); agreedEl.value = ""; renderMoves(); renderLog(); renderReview();
+  });
+
+  /* ---------- nav ---------- */
+  Array.prototype.forEach.call(document.querySelectorAll("nav button"), function(b){
+    b.addEventListener("click", function(){
+      Array.prototype.forEach.call(document.querySelectorAll("nav button"), function(x){
+        x.setAttribute("aria-current", x === b ? "true" : "false");
+      });
+      Array.prototype.forEach.call(document.querySelectorAll(".screen"), function(s){
+        s.classList.toggle("on", s.id === "s-" + b.dataset.s);
+      });
+      if(b.dataset.s === "log"){ viewDate = today(); renderLog(); }
+      if(b.dataset.s === "review") renderReview();
+      window.scrollTo(0,0);
+    });
+  });
+
+  /* ---------- boot ---------- */
+  load();
+  agreedEl.value = db.agreed || "";
+  renderMoves(); renderLog(); renderReview();
+
+  if("serviceWorker" in navigator){
+    window.addEventListener("load", function(){
+      navigator.serviceWorker.register("sw.js").catch(function(){});
+    });
+  }
+})();
+</script>
+</body>
+</html>
